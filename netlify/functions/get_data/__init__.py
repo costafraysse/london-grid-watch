@@ -14,9 +14,17 @@ def handler(event, context=None):
     Returns JSON with prices and carbon data.
     """
     
+    # Handle both dict and object-style events
+    if event is None:
+        event = {}
+    
     # Get parameters from query string (default to London)
-    params = event.get('queryStringParameters') or {}
-    region = params.get('region', 'C')
+    if isinstance(event, dict):
+        params = event.get('queryStringParameters') or {}
+    else:
+        params = getattr(event, 'queryStringParameters', None) or {}
+    
+    region = params.get('region', 'C') if isinstance(params, dict) else 'C'
     days_back = 1
     days_forward = 2
     
