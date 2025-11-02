@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>London Energy Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.2em;
+        }
+        
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+        
+        .metric-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+            transition: transform 0.3s;
+        }
+        
+        .metric-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 30px rgba(0,0,0,0.2);
+        }
+        
+        .metric-card h3 {
+            font-size: 0.95em;
+            opacity: 0.95;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-weight: 600;
+        }
+        
+        .metric-card .value {
+            font-size: 3em;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .metric-card .unit {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+        
+        .chart-section {
+            margin-bottom: 40px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 450px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+        
+        .chart-title {
+            font-size: 1.4em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 80px;
+            font-size: 1.5em;
+            color: #666;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        .error {
+            background: #ff4444;
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            text-align: center;
+            margin: 30px 0;
+            font-size: 1.1em;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 30px;
+            font-size: 1.1em;
+            cursor: pointer;
+            display: block;
+            margin: 30px auto;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .generation-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .gen-card {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+        
+        .gen-card .emoji {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .gen-card .fuel-name {
+            font-size: 0.9em;
+            color: #666;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .gen-card .percentage {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 50px;
+            padding-top: 30px;
+            border-top: 2px solid #e0e0e0;
+            color: #666;
+            font-size: 0.95em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ London Energy Dashboard</h1>
+        <p class="subtitle">Real-time Octopus Agile prices and carbon intensity</p>
+        
+        <div id="loading" class="loading">Loading data</div>
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="content" style="display: none;">
+            <div class="metrics">
+                <div class="metric-card">
+                    <h3>💰 Current Price</h3>
+                    <div class="value" id="current-price">--</div>
+                    <div class="unit">p/kWh</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>🌍 Carbon Intensity</h3>
+                    <div class="value" id="current-carbon">--</div>
+                    <div class="unit">gCO₂/kWh</div>
+                </div>
+                
+                <div class="metric-card">
+                    <h3>Status</h3>
+                    <div class="value" id="current-status">--</div>
+                    <div class="unit" id="current-recommendation">--</div>
+                </div>
+            </div>
+            
+            <div class="chart-section">
+                <div class="chart-title">Electricity Prices (colored by carbon intensity)</div>
+                <div class="chart-container">
+                    <canvas id="priceChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-section">
+                <div class="chart-title">Grid Carbon Intensity</div>
+                <div class="chart-container">
+                    <canvas id="carbonChart"></canvas>
+                </div>
+            </div>
+            
+            <div class="chart-section">
+                <div class="chart-title">🔌 Current Generation Mix</div>
+                <div class="generation-grid" id="generation-grid"></div>
+            </div>
+            
+            <button onclick="loadData()">🔄 Refresh Data</button>
+            
+            <footer>
+                <p>Last updated: <span id="last-updated">--</span></p>
+                <p>Data sources: Octopus Energy API • National Grid ESO Carbon Intensity API</p>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        let priceChart, carbonChart;
+        
+        async function loadData() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('content').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            
+            try {
+                // Call Netlify function
+                const response = await fetch('/.netlify/functions/get_data?region=C');
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.error || 'Failed to fetch data');
+                
+                displayData(data);
+                
+            } catch (error) {
+                document.getElementById('error').textContent = `Error: ${error.message}`;
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+        
+        function displayData(data) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('content').style.display = 'block';
+            
+            // Update last updated
+            const lastUpdated = new Date(data.timestamp);
+            document.getElementById('last-updated').textContent = lastUpdated.toLocaleString();
+            
+            // Find current slot
+            const now = new Date();
+            const currentPrice = data.prices.find(p => {
+                const from = new Date(p.valid_from);
+                const to = new Date(p.valid_to);
+                return from <= now && to > now;
+            });
+            
+            const currentCarbon = data.carbon.find(c => {
+                const from = new Date(c.from);
+                const to = new Date(c.to);
+                return from <= now && to > now;
+            });
+            
+            // Update metrics
+            if (currentPrice) {
+                document.getElementById('current-price').textContent = 
+                    currentPrice.value_inc_vat.toFixed(2);
+            }
+            
+            if (currentCarbon) {
+                const intensity = currentCarbon.intensity.forecast;
+                document.getElementById('current-carbon').textContent = intensity;
+                
+                let status, recommendation;
+                if (intensity < 100) {
+                    status = '🟢 Clean';
+                    recommendation = 'Great time to use energy!';
+                } else if (intensity < 200) {
+                    status = '🟡 Moderate';
+                    recommendation = 'Okay to use energy';
+                } else {
+                    status = '🔴 Dirty';
+                    recommendation = 'Avoid if possible';
+                }
+                
+                document.getElementById('current-status').textContent = status;
+                document.getElementById('current-recommendation').textContent = recommendation;
+                
+                // Display generation mix
+                displayGenerationMix(currentCarbon.generationmix);
+            }
+            
+            // Create charts
+            createPriceChart(data.prices, data.carbon);
+            createCarbonChart(data.carbon);
+        }
+        
+        function displayGenerationMix(generationmix) {
+            const grid = document.getElementById('generation-grid');
+            grid.innerHTML = '';
+            
+            const fuelEmoji = {
+                'wind': '🌬️',
+                'solar': '☀️',
+                'nuclear': '⚛️',
+                'gas': '🔥',
+                'hydro': '💧',
+                'biomass': '🌱',
+                'coal': '⚫',
+                'imports': '🔌'
+            };
+            
+            generationmix.forEach(fuel => {
+                if (fuel.perc > 0) {
+                    const card = document.createElement('div');
+                    card.className = 'gen-card';
+                    card.innerHTML = `
+                        <div class="emoji">${fuelEmoji[fuel.fuel] || '⚡'}</div>
+                        <div class="fuel-name">${fuel.fuel}</div>
+                        <div class="percentage">${fuel.perc.toFixed(1)}%</div>
+                    `;
+                    grid.appendChild(card);
+                }
+            });
+        }
+        
+        function createPriceChart(prices, carbon) {
+            const ctx = document.getElementById('priceChart');
+            
+            if (priceChart) priceChart.destroy();
+            
+            // Merge and sort
+            const merged = prices.map(p => {
+                const c = carbon.find(c => c.from === p.valid_from);
+                return {
+                    time: new Date(p.valid_from),
+                    price: p.value_inc_vat,
+                    carbon: c ? c.intensity.forecast : null
+                };
+            }).sort((a, b) => a.time - b.time);
+            
+            // Color by carbon
+            const colors = merged.map(d => {
+                if (!d.carbon) return 'rgba(150,150,150,0.8)';
+                const ratio = Math.min(d.carbon / 300, 1);
+                const r = Math.round(255 * ratio);
+                const g = Math.round(255 * (1 - ratio));
+                return `rgba(${r},${g},0,0.8)`;
+            });
+            
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: merged.map(d => d.time),
+                    datasets: [{
+                        label: 'Price (p/kWh)',
+                        data: merged.map(d => d.price),
+                        borderColor: 'rgb(102, 126, 234)',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        pointBackgroundColor: colors,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Price: ${context.parsed.y.toFixed(2)}p/kWh`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: { hour: 'MMM dd HH:mm' }
+                            },
+                            grid: { display: false }
+                        },
+                        y: {
+                            title: { display: true, text: 'Price (p/kWh)', font: { size: 14 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function createCarbonChart(carbon) {
+            const ctx = document.getElementById('carbonChart');
+            
+            if (carbonChart) carbonChart.destroy();
+            
+            const sorted = carbon.sort((a, b) => new Date(a.from) - new Date(b.from));
+            
+            // Color by intensity
+            const colors = sorted.map(d => {
+                const val = d.intensity.forecast;
+                if (val < 100) return 'rgba(46, 204, 113, 0.8)';
+                if (val < 200) return 'rgba(243, 156, 18, 0.8)';
+                return 'rgba(231, 76, 60, 0.8)';
+            });
+            
+            carbonChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: sorted.map(d => new Date(d.from)),
+                    datasets: [{
+                        label: 'Carbon (gCO₂/kWh)',
+                        data: sorted.map(d => d.intensity.forecast),
+                        borderColor: 'rgb(39, 174, 96)',
+                        backgroundColor: 'rgba(39, 174, 96, 0.2)',
+                        pointBackgroundColor: colors,
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 5,
+                        tension: 0.4,
+                        fill: true,
+                        borderWidth: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `Carbon: ${context.parsed.y}gCO₂/kWh`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'hour',
+                                displayFormats: { hour: 'MMM dd HH:mm' }
+                            },
+                            grid: { display: false }
+                        },
+                        y: {
+                            title: { display: true, text: 'Carbon (gCO₂/kWh)', font: { size: 14 } },
+                            grid: { color: 'rgba(0,0,0,0.05)' }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Load on page load
+        loadData();
+        
+        // Auto-refresh every 30 minutes
+        setInterval(loadData, 30 * 60 * 1000);
+    </script>
+</body>
+</html>
+
