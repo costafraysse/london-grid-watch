@@ -6,6 +6,7 @@
     <title>London Energy Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -348,9 +349,18 @@
                 displayGenerationMix(currentCarbon.generationmix);
             }
             
-            // Create charts
-            createPriceChart(data.prices, data.carbon);
-            createCarbonChart(data.carbon);
+            // Calculate time range based on price data
+            const priceTimes = data.prices.map(p => new Date(p.valid_from).getTime());
+            const carbonTimes = data.carbon.map(c => new Date(c.from).getTime());
+            
+            const timeRange = {
+                min: Math.min(...priceTimes, ...carbonTimes),
+                max: Math.max(...priceTimes)
+            };
+            
+            // Create charts with synchronized time range
+            createPriceChart(data.prices, data.carbon, timeRange);
+            createCarbonChart(data.carbon, timeRange);
         }
         
         function displayGenerationMix(generationmix) {
@@ -382,7 +392,7 @@
             });
         }
         
-        function createPriceChart(prices, carbon) {
+        function createPriceChart(prices, carbon, timeRange) {
             const ctx = document.getElementById('priceChart');
             
             if (priceChart) priceChart.destroy();
@@ -435,6 +445,26 @@
                                     return `Price: ${context.parsed.y.toFixed(2)}p/kWh`;
                                 }
                             }
+                        },
+                        annotation: {
+                            annotations: {
+                                currentTime: {
+                                    type: 'line',
+                                    xMin: new Date(),
+                                    xMax: new Date(),
+                                    borderColor: 'rgba(255, 0, 0, 0.7)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        display: true,
+                                        content: 'Now',
+                                        position: 'start',
+                                        backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                                        color: 'white',
+                                        padding: 4
+                                    }
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -444,6 +474,8 @@
                                 unit: 'hour',
                                 displayFormats: { hour: 'MMM dd HH:mm' }
                             },
+                            min: timeRange.min,
+                            max: timeRange.max,
                             grid: { display: false }
                         },
                         y: {
@@ -455,7 +487,7 @@
             });
         }
         
-        function createCarbonChart(carbon) {
+        function createCarbonChart(carbon, timeRange) {
             const ctx = document.getElementById('carbonChart');
             
             if (carbonChart) carbonChart.destroy();
@@ -499,6 +531,26 @@
                                     return `Carbon: ${context.parsed.y}gCO₂/kWh`;
                                 }
                             }
+                        },
+                        annotation: {
+                            annotations: {
+                                currentTime: {
+                                    type: 'line',
+                                    xMin: new Date(),
+                                    xMax: new Date(),
+                                    borderColor: 'rgba(255, 0, 0, 0.7)',
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        display: true,
+                                        content: 'Now',
+                                        position: 'start',
+                                        backgroundColor: 'rgba(255, 0, 0, 0.8)',
+                                        color: 'white',
+                                        padding: 4
+                                    }
+                                }
+                            }
                         }
                     },
                     scales: {
@@ -508,6 +560,8 @@
                                 unit: 'hour',
                                 displayFormats: { hour: 'MMM dd HH:mm' }
                             },
+                            min: timeRange.min,
+                            max: timeRange.max,
                             grid: { display: false }
                         },
                         y: {
